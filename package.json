@@ -17,13 +17,16 @@
     "url": "git@github.com:AdamPflug/express-brute-redis.git"
   },
   "devDependencies": {
-    "jasmine-node": "~1.11.0",
-    "proxyquire": "~0.5.0",
-    "async": "~0.2.9"
+    "eslint": "^5.15.0",
+    "eslint-config-airbnb": "^17.1.0",
+    "eslint-config-airbnb-base": "^13.1.0",
+    "eslint-plugin-import": "^2.16.0",
+    "eslint-plugin-jasmine": "^2.10.1",
+    "eslint-plugin-jsx-a11y": "^6.2.1",
+    "eslint-plugin-react": "^7.12.4",
+    "jasmine-node": "~1.16.2",
+    "prettier": "^1.16.4",
+    "redis-mock": "^0.43.0"
   },
-  "dependencies": {
-    "underscore": "~1.5.1",
-    "redis": "~0.10.0",
-    "express-brute": "~0.4.2"
-  }
+  "dependencies": {}
 }

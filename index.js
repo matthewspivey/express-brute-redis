@@ -1,62 +1,76 @@
-var AbstractClientStore = require('express-brute/lib/AbstractClientStore'),
-    Redis = require('redis'),
-    _ = require('underscore');
+class RedisStore {
+  constructor({ prefix, client }) {
+    this.prefix = prefix || '';
+    this.client = client;
+  }
 
-var RedisStore = module.exports = function (options) {
-	AbstractClientStore.apply(this, arguments);
-	this.options = _.extend({}, RedisStore.defaults, options);
-	this.redisOptions = _(this.options).clone();
-	delete this.redisOptions.prefix;
-	delete this.redisOptions.client;
-	delete this.redisOptions.port;
-	delete this.redisOptions.host;
+  set(key, value, lifetime, callback) {
+    const lifetimeInt = parseInt(lifetime, 10) || 0;
+    const multi = this.client.multi();
+    const redisKey = this.prefix + key;
 
-	if (this.options.client) {
-		this.client = this.options.client;
-	} else {
-		this.client = RedisStore.Redis.createClient(
-			this.options.port,
-			this.options.host,
-			this.options.redisOptions
-		);
-	}
-};
-RedisStore.prototype = Object.create(AbstractClientStore.prototype);
-RedisStore.prototype.set = function (key, value, lifetime, callback) {
-	lifetime = parseInt(lifetime, 10) || 0;
-	var multi    = this.client.multi(),
-	    redisKey = this.options.prefix+key;
+    multi.set(redisKey, JSON.stringify(value));
+    if (lifetimeInt > 0) {
+      multi.expire(redisKey, lifetimeInt);
+    }
+    multi.exec(() => {
+      if (typeof callback === 'function') {
+        callback.call(this, null);
+      }
+    });
+  }
 
-	multi.set(redisKey, JSON.stringify(value));
-	if (lifetime > 0) {
-		multi.expire(redisKey, lifetime);
-	}
-	multi.exec(function (err, data) {
-		typeof callback == 'function' && callback.call(this, null);
-	});
-};
-RedisStore.prototype.get = function (key, callback) {
-	this.client.get(this.options.prefix+key, function (err, data) {
-		if (err) {
-			typeof callback == 'function' && callback(err, null);
-		} else {
-			if (data) {
-				data = JSON.parse(data);
-				data.lastRequest = new Date(data.lastRequest);
-				data.firstRequest = new Date(data.firstRequest);
-			}
-			typeof callback == 'function' && callback(err, data);
-		}
-	});
-};
-RedisStore.prototype.reset = function (key, callback) {
-	this.client.del(this.options.prefix+key, function (err, data) {
-		typeof callback == 'function' && callback.apply(this, arguments);
-	});
-};
-RedisStore.Redis = Redis;
-RedisStore.defaults = {
-	prefix: '',
-	port: 6379,
-	host: '127.0.0.1'
-};
+  get(key, callback) {
+    this.client.get(this.prefix + key, (err, data) => {
+      if (typeof callback !== 'function') {
+        return;
+      }
+      if (err || !data) {
+        callback(err, null);
+      } else {
+        const parsed = JSON.parse(data);
+        callback(err, {
+          ...parsed,
+          lastRequest: new Date(parsed.lastRequest),
+          firstRequest: new Date(parsed.firstRequest),
+        });
+      }
+    });
+  }
+
+  reset(key, callback) {
+    this.client.del(this.prefix + key, (...args) => {
+      if (typeof callback === 'function') {
+        callback.apply(this, args);
+      }
+    });
+  }
+
+  // TODO can we make this a more atomic operation using Redis eval
+  increment(key, lifetime, callback) {
+    const self = this;
+    this.get(key, (err, value) => {
+      if (err) {
+        callback(err);
+        return;
+      }
+      const count = value ? value.count + 1 : 1;
+      self.set(
+        key,
+        { count, lastRequest: new Date(), firstRequest: new Date() },
+        lifetime,
+        (err2) => {
+          const prevValue = {
+            count: value ? value.count : 0,
+            lastRequest: value ? value.lastRequest : null,
+            firstRequest: value ? value.firstRequest : null,
+          };
+          if (typeof callback === 'function') {
+            callback(err2, prevValue);
+          }
+        },
+      );
+    });
+  }
+}
+module.exports = RedisStore;
