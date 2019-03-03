@@ -19,14 +19,19 @@
   "devDependencies": {
     "eslint": "^5.15.0",
     "eslint-config-airbnb": "^17.1.0",
-    "eslint-config-airbnb-base": "^13.1.0",
+    "eslint-config-prettier": "^4.1.0",
+    "eslint-config-react-app": "^3.0.7",
     "eslint-plugin-import": "^2.16.0",
     "eslint-plugin-jasmine": "^2.10.1",
     "eslint-plugin-jsx-a11y": "^6.2.1",
+    "eslint-plugin-prettier": "^3.0.1",
     "eslint-plugin-react": "^7.12.4",
     "jasmine-node": "~1.16.2",
     "prettier": "^1.16.4",
     "redis-mock": "^0.43.0"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "peerDependencies": {
+    "redis": "2.x"
+  }
 }
