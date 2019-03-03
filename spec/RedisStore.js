@@ -1,9 +1,5 @@
 const RedisMock = require('redis-mock');
 const RedisStore = require('../index.js');
-// const RedisMock = require('../mock/RedisMock');
-
-// const redisMock = RedisMock.createClient(6379, 'localhost', {});
-const redisMock = RedisMock.createClient();
 
 describe('Express brute redis store', () => {
   let instance;
@@ -11,7 +7,10 @@ describe('Express brute redis store', () => {
   let count = 0;
   beforeEach(() => {
     count += 1;
-    instance = new RedisStore({ prefix: `test${count}`, client: redisMock });
+    instance = new RedisStore({
+      prefix: `test${count}`,
+      client: RedisMock.createClient(),
+    });
     callback = jasmine.createSpy();
   });
 
@@ -27,7 +26,7 @@ describe('Express brute redis store', () => {
       instance.set('1.2.3.4', object, 0, callback);
     });
 
-    waitsFor(() => callback.calls.length == 1);
+    waitsFor(() => callback.calls.length === 1);
 
     runs(() => {
       expect(callback).toHaveBeenCalledWith(null);
@@ -35,7 +34,7 @@ describe('Express brute redis store', () => {
       instance.get('1.2.3.4', callback);
     });
 
-    waitsFor(() => callback.calls.length == 2);
+    waitsFor(() => callback.calls.length === 2);
 
     runs(() => {
       expect(callback.mostRecentCall.args[0]).toBe(null);
@@ -50,7 +49,7 @@ describe('Express brute redis store', () => {
       instance.set('1.2.3.4', object, 0, callback);
     });
 
-    waitsFor(() => callback.calls.length == 1);
+    waitsFor(() => callback.calls.length === 1);
 
     runs(() => {
       expect(callback).toHaveBeenCalledWith(null);
@@ -58,7 +57,7 @@ describe('Express brute redis store', () => {
       instance.increment('1.2.3.4', 0, callback);
     });
 
-    waitsFor(() => callback.calls.length == 2);
+    waitsFor(() => callback.calls.length === 2);
 
     runs(() => {
       expect(callback.mostRecentCall.args[0]).toBe(null);
@@ -67,7 +66,7 @@ describe('Express brute redis store', () => {
       instance.get('1.2.3.4', callback);
     });
 
-    waitsFor(() => callback.calls.length == 3);
+    waitsFor(() => callback.calls.length === 3);
 
     runs(() => {
       expect(callback.mostRecentCall.args[0]).toBe(null);
@@ -79,29 +78,29 @@ describe('Express brute redis store', () => {
       instance.increment('1.2.3.4', 0, callback);
     });
 
-    waitsFor(() => callback.calls.length == 1);
+    waitsFor(() => callback.calls.length === 1);
 
     runs(() => {
       expect(callback.mostRecentCall.args[0]).toBe(null);
       expect(callback.mostRecentCall.args[1]).toEqual({
         count: 0,
         lastRequest: null,
-        firstRequest: null
+        firstRequest: null,
       });
 
       instance.get('1.2.3.4', callback);
     });
 
-    waitsFor(() => callback.calls.length == 2);
+    waitsFor(() => callback.calls.length === 2);
 
     runs(() => {
       expect(callback.mostRecentCall.args[0]).toBe(null);
       expect(callback.mostRecentCall.args[1].count).toEqual(1);
       expect(
-        callback.mostRecentCall.args[1].lastRequest instanceof Date
+        callback.mostRecentCall.args[1].lastRequest instanceof Date,
       ).toBeTruthy();
       expect(
-        callback.mostRecentCall.args[1].firstRequest instanceof Date
+        callback.mostRecentCall.args[1].firstRequest instanceof Date,
       ).toBeTruthy();
     });
   });
@@ -110,7 +109,7 @@ describe('Express brute redis store', () => {
       instance.get('1.2.3.4', callback);
     });
 
-    waitsFor(() => callback.calls.length == 1);
+    waitsFor(() => callback.calls.length === 1);
 
     runs(() => {
       expect(callback.mostRecentCall.args[0]).toBe(null);
@@ -124,7 +123,7 @@ describe('Express brute redis store', () => {
       instance.set('1.2.3.4', object, 0, callback);
     });
 
-    waitsFor(() => callback.calls.length == 1);
+    waitsFor(() => callback.calls.length === 1);
 
     runs(() => {
       expect(callback).toHaveBeenCalledWith(null);
@@ -132,7 +131,7 @@ describe('Express brute redis store', () => {
       instance.get('1.2.3.4', callback);
     });
 
-    waitsFor(() => callback.calls.length == 2);
+    waitsFor(() => callback.calls.length === 2);
 
     runs(() => {
       expect(callback.mostRecentCall.args[0]).toBe(null);
@@ -141,7 +140,7 @@ describe('Express brute redis store', () => {
       instance.reset('1.2.3.4', callback);
     });
 
-    waitsFor(() => callback.calls.length == 3);
+    waitsFor(() => callback.calls.length === 3);
 
     runs(() => {
       expect(callback.mostRecentCall.args[0]).toBe(null);
@@ -149,7 +148,7 @@ describe('Express brute redis store', () => {
       instance.get('1.2.3.4', callback);
     });
 
-    waitsFor(() => callback.calls.length == 4);
+    waitsFor(() => callback.calls.length === 4);
 
     runs(() => {
       expect(callback.mostRecentCall.args[0]).toBe(null);
@@ -164,7 +163,7 @@ describe('Express brute redis store', () => {
       instance.set('1.2.3.4', object, 1, callback);
     });
 
-    waitsFor(() => callback.calls.length == 1);
+    waitsFor(() => callback.calls.length === 1);
 
     runs(() => {
       expect(callback).toHaveBeenCalledWith(null);
@@ -176,7 +175,7 @@ describe('Express brute redis store', () => {
       instance.get('1.2.3.4', callback);
     });
 
-    waitsFor(() => callback.calls.length == 2);
+    waitsFor(() => callback.calls.length === 2);
 
     runs(() => {
       expect(callback.mostRecentCall.args[0]).toBe(null);
@@ -189,7 +188,7 @@ describe('Express brute redis store', () => {
       instance.get('1.2.3.4', callback);
     });
 
-    waitsFor(() => callback.calls.length == 3);
+    waitsFor(() => callback.calls.length === 3);
 
     runs(() => {
       expect(callback.mostRecentCall.args[0]).toBe(null);
