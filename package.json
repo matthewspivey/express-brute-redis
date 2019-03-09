@@ -10,13 +10,14 @@
   "license": "BSD",
   "private": false,
   "scripts": {
-    "test": "node node_modules/jasmine-node/lib/jasmine-node/cli.js --captureExceptions --matchall spec"
+    "test": "mocha spec/ --watch"
   },
   "repository": {
     "type": "git",
     "url": "git@github.com:AdamPflug/express-brute-redis.git"
   },
   "devDependencies": {
+    "chai": "^4.2.0",
     "eslint": "^5.15.0",
     "eslint-config-airbnb": "^17.1.0",
     "eslint-config-prettier": "^4.1.0",
@@ -26,11 +27,10 @@
     "eslint-plugin-jsx-a11y": "^6.2.1",
     "eslint-plugin-prettier": "^3.0.1",
     "eslint-plugin-react": "^7.12.4",
-    "jasmine-node": "~1.16.2",
+    "mocha": "^6.0.2",
     "prettier": "^1.16.4",
     "redis-mock": "^0.43.0"
   },
-  "dependencies": {},
   "peerDependencies": {
     "redis": "2.x"
   }
