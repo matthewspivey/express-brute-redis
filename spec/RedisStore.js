@@ -5,6 +5,7 @@ const RedisStore = require('../index.js');
 describe('Express brute redis store', () => {
   const { expect } = chai;
   const key = 'key';
+  const lifetime = 1000;
   let instance;
   let testCount = 0;
   const client = RedisMock.createClient();
@@ -22,30 +23,31 @@ describe('Express brute redis store', () => {
   });
 
   it('can initialize key', async () => {
-    const { count, last } = await instance.increment(key);
+    const { count, first } = await instance.increment(key, lifetime);
 
     expect(count).to.equal(1);
-    expect(last).to.be.at.most(new Date(Date.now()));
+    expect(first).to.be.at.most(new Date(Date.now()));
   });
 
   it('can update key', async () => {
-    Array(99)
+    Array(999)
       .fill('')
       .forEach(async () => {
-        await instance.increment(key);
+        await instance.increment(key, lifetime);
       });
 
-    const { last, count } = await instance.increment(key);
-
-    expect(count).to.equal(100);
-    expect(last).to.be.below(new Date(Date.now()));
+    const { first, count } = await instance.increment(key, lifetime);
+    expect(count).to.equal(1000);
+    expect(first).to.be.below(new Date(Date.now()));
   });
 
   it('can reset the counters', async () => {
-    await instance.increment(key);
+    await instance.increment(key, lifetime);
     await instance.reset(key);
 
-    const { count } = await instance.increment(key);
+    const { count } = await instance.increment(key, lifetime);
     expect(count).to.equal(1);
   });
+
+  // TODO - handle lifetime
 });
