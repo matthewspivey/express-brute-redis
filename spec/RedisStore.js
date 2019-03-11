@@ -1,198 +1,53 @@
+const chai = require('chai');
 const RedisMock = require('redis-mock');
 const RedisStore = require('../index.js');
 
 describe('Express brute redis store', () => {
+  const { expect } = chai;
+  const key = 'key';
+  const lifetime = 1000;
   let instance;
-  let callback;
-  let count = 0;
+  let testCount = 0;
+  const client = RedisMock.createClient();
   beforeEach(() => {
-    count += 1;
+    testCount += 1;
     instance = new RedisStore({
-      prefix: `test${count}`,
-      client: RedisMock.createClient(),
+      prefix: `test${testCount}`,
+      client
     });
-    callback = jasmine.createSpy();
+    client.flushall();
   });
 
   it('can be instantiated', () => {
-    expect(instance).toBeDefined();
-    expect(instance instanceof RedisStore).toBeTruthy();
+    expect(instance).to.be.an.instanceof(RedisStore);
   });
 
-  it('can set a key and get it back', () => {
-    const curDate = new Date();
-    const object = { count: 1, lastRequest: curDate, firstRequest: curDate };
-    runs(() => {
-      instance.set('1.2.3.4', object, 0, callback);
-    });
+  it('can initialize key', async () => {
+    const { count, first } = await instance.increment(key, lifetime);
 
-    waitsFor(() => callback.calls.length === 1);
-
-    runs(() => {
-      expect(callback).toHaveBeenCalledWith(null);
-
-      instance.get('1.2.3.4', callback);
-    });
-
-    waitsFor(() => callback.calls.length === 2);
-
-    runs(() => {
-      expect(callback.mostRecentCall.args[0]).toBe(null);
-      expect(callback.mostRecentCall.args[1]).toEqual(object);
-    });
+    expect(count).to.equal(1);
+    expect(first).to.be.at.most(new Date(Date.now()));
   });
 
-  it('increments values and returns that last value', () => {
-    const curDate = new Date();
-    const object = { count: 1, lastRequest: curDate, firstRequest: curDate };
-    runs(() => {
-      instance.set('1.2.3.4', object, 0, callback);
-    });
-
-    waitsFor(() => callback.calls.length === 1);
-
-    runs(() => {
-      expect(callback).toHaveBeenCalledWith(null);
-
-      instance.increment('1.2.3.4', 0, callback);
-    });
-
-    waitsFor(() => callback.calls.length === 2);
-
-    runs(() => {
-      expect(callback.mostRecentCall.args[0]).toBe(null);
-      expect(callback.mostRecentCall.args[1]).toEqual(object);
-
-      instance.get('1.2.3.4', callback);
-    });
-
-    waitsFor(() => callback.calls.length === 3);
-
-    runs(() => {
-      expect(callback.mostRecentCall.args[0]).toBe(null);
-      expect(callback.mostRecentCall.args[1].count).toEqual(2);
-    });
-  });
-  it('can increment even if no value was set', () => {
-    runs(() => {
-      instance.increment('1.2.3.4', 0, callback);
-    });
-
-    waitsFor(() => callback.calls.length === 1);
-
-    runs(() => {
-      expect(callback.mostRecentCall.args[0]).toBe(null);
-      expect(callback.mostRecentCall.args[1]).toEqual({
-        count: 0,
-        lastRequest: null,
-        firstRequest: null,
+  it('can update key', async () => {
+    Array(999)
+      .fill('')
+      .forEach(async () => {
+        await instance.increment(key, lifetime);
       });
 
-      instance.get('1.2.3.4', callback);
-    });
-
-    waitsFor(() => callback.calls.length === 2);
-
-    runs(() => {
-      expect(callback.mostRecentCall.args[0]).toBe(null);
-      expect(callback.mostRecentCall.args[1].count).toEqual(1);
-      expect(
-        callback.mostRecentCall.args[1].lastRequest instanceof Date,
-      ).toBeTruthy();
-      expect(
-        callback.mostRecentCall.args[1].firstRequest instanceof Date,
-      ).toBeTruthy();
-    });
+    const { first, count } = await instance.increment(key, lifetime);
+    expect(count).to.equal(1000);
+    expect(first).to.be.below(new Date(Date.now()));
   });
-  it('returns null when no value is available', () => {
-    runs(() => {
-      instance.get('1.2.3.4', callback);
-    });
 
-    waitsFor(() => callback.calls.length === 1);
+  it('can reset the counters', async () => {
+    await instance.increment(key, lifetime);
+    await instance.reset(key);
 
-    runs(() => {
-      expect(callback.mostRecentCall.args[0]).toBe(null);
-      expect(callback.mostRecentCall.args[1]).toEqual(null);
-    });
+    const { count } = await instance.increment(key, lifetime);
+    expect(count).to.equal(1);
   });
-  it('can reset the count of requests', () => {
-    const curDate = new Date();
-    const object = { count: 1, lastRequest: curDate, firstRequest: curDate };
-    runs(() => {
-      instance.set('1.2.3.4', object, 0, callback);
-    });
 
-    waitsFor(() => callback.calls.length === 1);
-
-    runs(() => {
-      expect(callback).toHaveBeenCalledWith(null);
-
-      instance.get('1.2.3.4', callback);
-    });
-
-    waitsFor(() => callback.calls.length === 2);
-
-    runs(() => {
-      expect(callback.mostRecentCall.args[0]).toBe(null);
-      expect(callback.mostRecentCall.args[1]).toEqual(object);
-
-      instance.reset('1.2.3.4', callback);
-    });
-
-    waitsFor(() => callback.calls.length === 3);
-
-    runs(() => {
-      expect(callback.mostRecentCall.args[0]).toBe(null);
-
-      instance.get('1.2.3.4', callback);
-    });
-
-    waitsFor(() => callback.calls.length === 4);
-
-    runs(() => {
-      expect(callback.mostRecentCall.args[0]).toBe(null);
-      expect(callback.mostRecentCall.args[1]).toEqual(null);
-    });
-  });
-  it('supports data expiring', () => {
-    const curDate = new Date();
-    const object = { count: 1, lastRequest: curDate, firstRequest: curDate };
-
-    runs(() => {
-      instance.set('1.2.3.4', object, 1, callback);
-    });
-
-    waitsFor(() => callback.calls.length === 1);
-
-    runs(() => {
-      expect(callback).toHaveBeenCalledWith(null);
-    });
-
-    waits(500);
-
-    runs(() => {
-      instance.get('1.2.3.4', callback);
-    });
-
-    waitsFor(() => callback.calls.length === 2);
-
-    runs(() => {
-      expect(callback.mostRecentCall.args[0]).toBe(null);
-      expect(callback.mostRecentCall.args[1]).toEqual(object);
-    });
-
-    waits(500);
-
-    runs(() => {
-      instance.get('1.2.3.4', callback);
-    });
-
-    waitsFor(() => callback.calls.length === 3);
-
-    runs(() => {
-      expect(callback.mostRecentCall.args[0]).toBe(null);
-      expect(callback.mostRecentCall.args[1]).toEqual(null);
-    });
-  });
+  // TODO - handle lifetime
 });
