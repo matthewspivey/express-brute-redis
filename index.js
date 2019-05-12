@@ -1,14 +1,17 @@
 class RedisStore {
-  constructor({ prefix, client }) {
+  constructor({ prefix, client, ttl }) {
     this.prefix = prefix || '';
     this.client = client;
+    this.ttl = Math.max(0, ttl);
   }
 
   // Resets the counters for a key
   // Returns a promise
   reset(key) {
+    const prefixedKey = `${this.prefix}${key}`;
+
     return new Promise((resolve, reject) => {
-      this.client.del(this.prefix + key, errorMessage => {
+      this.client.del(prefixedKey, errorMessage => {
         if (errorMessage) {
           reject(errorMessage);
         } else {
@@ -17,34 +20,53 @@ class RedisStore {
       });
     });
   }
+}
 
+class FixedWindow extends RedisStore {
   // Increments the counter
-  // Returns { count: 1, last: <timestamp> }
-  increment(key, lifetime, refreshTimeout = false) {
-    return new Promise((resolve, reject) => {
-      const prefixedKey = this.prefix + key;
-      const transaction = this.client
-        .multi()
-        .hsetnx(prefixedKey, 'first', Date.now()) // set timestamp of first call
-        .hsetnx(prefixedKey, 'count', 0) // initialize the count if hasn't been
-        .hincrby(prefixedKey, 'count', 1);
+  // Returns { count: 1, start: <timestamp> }
+  increment(key) {
+    const now = Date.now();
+    const prefixedKey = `${this.prefix}${key}`;
 
-      if (refreshTimeout) {
-        transaction.expire(prefixedKey, lifetime);
-      }
-
-      transaction.hgetall(prefixedKey).exec((errorMessage, responses) => {
-        if (errorMessage) {
-          reject(errorMessage);
+    const reset = (resolve, reject) => {
+      this.client.hmset(prefixedKey, ['start', now, 'count', 1], err => {
+        if (err) {
+          reject(err);
         } else {
-          const { first, count } = responses[refreshTimeout ? 4 : 3];
           resolve({
-            first: new Date(parseInt(first, 10)),
-            count: parseInt(count, 10)
+            start: new Date(now),
+            count: 1
           });
         }
       });
+    };
+
+    return new Promise((resolve, reject) => {
+      this.client
+        .multi()
+        .hsetnx(prefixedKey, 'start', now)
+        .hincrby(prefixedKey, 'count', 1)
+        .hgetall(prefixedKey)
+        .exec((errorMessage, responses) => {
+          if (errorMessage) {
+            reject(errorMessage);
+          } else {
+            const [, count, { start }] = responses;
+            const startInt = parseInt(start, 10);
+
+            if (now < startInt + this.ttl) {
+              resolve({
+                start: new Date(startInt),
+                count
+              });
+            } else {
+              reset(resolve, reject);
+            }
+          }
+        });
     });
   }
 }
-module.exports = RedisStore;
+
+module.exports = { FixedWindow };

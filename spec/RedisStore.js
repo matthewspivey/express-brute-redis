@@ -1,11 +1,10 @@
 const chai = require('chai');
 const RedisMock = require('redis-mock');
-const RedisStore = require('../index.js');
+const { FixedWindow: RedisStore } = require('../index.js');
 
 describe('Express brute redis store', () => {
   const { expect } = chai;
   const key = 'key';
-  const lifetime = 1000;
   let instance;
   let testCount = 0;
   const client = RedisMock.createClient();
@@ -13,7 +12,8 @@ describe('Express brute redis store', () => {
     testCount += 1;
     instance = new RedisStore({
       prefix: `test${testCount}`,
-      client
+      client,
+      ttl: 1000
     });
     client.flushall();
   });
@@ -23,29 +23,30 @@ describe('Express brute redis store', () => {
   });
 
   it('can initialize key', async () => {
-    const { count, first } = await instance.increment(key, lifetime);
+    const { count, start } = await instance.increment(key);
 
     expect(count).to.equal(1);
-    expect(first).to.be.at.most(new Date(Date.now()));
+    expect(start).to.be.at.most(new Date(Date.now()));
   });
 
   it('can update key', async () => {
-    Array(999)
+    const iterations = 1000;
+    Array(iterations - 1)
       .fill('')
       .forEach(async () => {
-        await instance.increment(key, lifetime);
+        await instance.increment(key);
       });
 
-    const { first, count } = await instance.increment(key, lifetime);
-    expect(count).to.equal(1000);
-    expect(first).to.be.below(new Date(Date.now()));
+    const { start, count } = await instance.increment(key);
+    expect(count).to.equal(iterations);
+    expect(start).to.be.below(new Date(Date.now()));
   });
 
   it('can reset the counters', async () => {
-    await instance.increment(key, lifetime);
+    await instance.increment(key);
     await instance.reset(key);
 
-    const { count } = await instance.increment(key, lifetime);
+    const { count } = await instance.increment(key);
     expect(count).to.equal(1);
   });
 
